@@ -292,44 +292,6 @@ void cla_usage(t_cla *cla) {
   }
 }
 
-// void cla_usage(t_cla *cla) {
-//   int max_len = 0;
-//   char buffer[256];
-//   for (size_t i = 0; i < cla->args_count; i++) {
-//     int len = 0;
-//     if (cla->args[i].short_name) {
-//       len += snprintf(buffer, sizeof(buffer), "-%c",
-//       cla->args[i].short_name); if (cla->args[i].value_required)
-//         len += snprintf(buffer, sizeof(buffer), " <option>");
-//       len += snprintf(buffer, sizeof(buffer), ", ");
-//     }
-//     if (cla->args[i].long_name) {
-//       len += snprintf(buffer, sizeof(buffer), "--%s",
-//       cla->args[i].long_name); if (cla->args[i].value_required)
-//         len += snprintf(buffer, sizeof(buffer), "=<option>");
-//     }
-//     if (len > max_len)
-//       max_len = len;
-//   }
-//   printf("Usage: %s [OPTIONS]\n", cla->argv[0]);
-//   printf("Options:\n");
-//   for (size_t i = 0; i < cla->args_count; i++) {
-//     if (cla->args[i].short_name) {
-//       printf("-%c", cla->args[i].short_name);
-//       if (cla->args[i].value_required)
-//         printf(" <option>");
-//       printf(", ");
-//     }
-//     if (cla->args[i].long_name) {
-//       printf("--%s", cla->args[i].long_name);
-//       if (cla->args[i].value_required)
-//         printf("=<option>");
-//     }
-//     printf("%*s%s\n", (int)(max_len - strlen(buffer)), "",
-//            cla->args[i].description);
-//   }
-// }
-
 void clarg_debug_print(t_clarg *clarg) {
   printf("--------------\n");
   printf("short_name: %c\n", clarg->short_name);
