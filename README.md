@@ -68,55 +68,55 @@ Options:
 
 ## API Reference
 
-### `t_cla *cla_init(t_cla *cla, int argc, char **argv)`
+`t_cla *cla_init(t_cla *cla, int argc, char **argv)`
 
 Initializes a command line argument parser with the given arguments.
 
-### `void cla_destroy(t_cla *cla)`
+`void cla_destroy(t_cla *cla)`
 
 Destroys a command line argument parser, freeing any allocated resources.
 
-### `t_clarg *clarg_init(t_clarg *clarg, char short_name, const char *long_name, const char *description)`
+`t_clarg *clarg_init(t_clarg *clarg, char short_name, const char *long_name, const char *description)`
 
 Initializes a command line argument with a short name, long name, and description.
 
-### `t_clarg *cla_new(t_cla *cla)`
+`t_clarg *cla_new(t_cla *cla)`
 
 Creates a new command line argument parser.
 
-### `t_clarg *cla_arg(t_cla *cla, char short_name, const char *long_name, const char *description)`
+`t_clarg *cla_arg(t_cla *cla, char short_name, const char *long_name, const char *description)`
 
 Adds a new argument to a command line argument parser.
 
-### `t_clarg *clarg_add_allowed_value(t_clarg *clarg, const char *value)`
+`t_clarg *clarg_add_allowed_value(t_clarg *clarg, const char *value)`
 
 Adds an allowed value to a command line argument.
 
-### `int cla_parse(t_cla *cla)`
+`int cla_parse(t_cla *cla)`
 
 Parses the command line arguments using the given parser.
 
-### `void cla_usage(t_cla *cla)`
+`void cla_usage(t_cla *cla)`
 
 Prints the usage information for the command line arguments.
 
-### `bool cla_provided(t_cla *cla, char short_name)`
+`bool cla_provided(t_cla *cla, char short_name)`
 
 Checks if a command line argument was provided.
 
-### `t_clarg *cla_get(t_cla *cla, char short_name)`
+`t_clarg *cla_get(t_cla *cla, char short_name)`
 
 Returns the command line argument with the given short name.
 
-### `const char *cla_value(t_cla *cla, char short_name)`
+`const char *cla_value(t_cla *cla, char short_name)`
 
 Returns the value of the command line argument with the given short name.
 
-### `void clarg_debug_print(t_clarg *clarg)`
+`void clarg_debug_print(t_clarg *clarg)`
 
 Prints debug information for a command line argument.
 
-### `void cla_debug_print(t_cla *cla)`
+`void cla_debug_print(t_cla *cla)`
 
 Prints debug information for a command line argument parser.
 
