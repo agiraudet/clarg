@@ -1,9 +1,40 @@
-#include <stddef.h>
+#include "clarg.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "clarg.h"
+static int ft_strcmp(const char *s1, const char *s2) {
+  int i;
+  i = 0;
+  while (s1[i] && s1[i] == s2[i])
+    i++;
+  return ((unsigned char)s1[i] - (unsigned char)s2[i]);
+}
+
+static int ft_strncmp(const char *s1, const char *s2, size_t n) {
+  size_t i;
+  i = 0;
+  if (!n)
+    return (0);
+  while ((s1[i] && s1[i] == s2[i]) && i < n - 1)
+    i++;
+  return ((unsigned char)s1[i] - (unsigned char)s2[i]);
+}
+
+static char *ft_strchr(const char *s, int c) {
+  while (*s && *s != c)
+    s++;
+  if (*s != c)
+    s = 0;
+  return ((char *)s);
+}
+
+static void *ft_memset(void *s, int c, size_t n) {
+  unsigned char *cursor;
+  cursor = s;
+  while (n-- > 0)
+    *cursor++ = c;
+  return (s);
+}
 
 static t_cla *get_cla() {
   static t_cla cla;
@@ -58,7 +89,7 @@ static bool cla_vector_empty(t_cla_vector *vec) { return vec->size == 0; }
 
 bool cla_vector_in(t_cla_vector *vec, const char *str) {
   for (size_t i = 0; i < vec->size; i++) {
-    if (strcmp(vec->data[i], str) == 0)
+    if (ft_strcmp(vec->data[i], str) == 0)
       return true;
   }
   return false;
@@ -122,7 +153,7 @@ static t_clarg *clarg_init(t_clarg *clarg, char short_name,
   clarg->provided = false;
   clarg->value_required = false;
   clarg->value = NULL;
-  memset(&clarg->usage, 0, sizeof(clarg->usage));
+  ft_memset(&clarg->usage, 0, sizeof(clarg->usage));
   cla_vector_init(&clarg->allowed_values, 0);
   return clarg;
 }
@@ -185,11 +216,11 @@ static int cla_match_shortname(t_cla *cla, const char *str) {
 
 static int cla_match_longname(t_cla *cla, const char *str) {
   str += 2;
-  const char *equal = strchr(str, '=');
+  const char *equal = ft_strchr(str, '=');
   for (size_t i = 0; i < cla->args_count; i++) {
     t_clarg *clarg = cla->args + i;
     if (equal) {
-      if (strncmp(clarg->long_name, str, equal - str) == 0) {
+      if (ft_strncmp(clarg->long_name, str, equal - str) == 0) {
         clarg->provided = true;
         clarg->value = equal + 1;
         if (clarg->allowed_values.size > 0 &&
@@ -202,7 +233,7 @@ static int cla_match_longname(t_cla *cla, const char *str) {
         return 0;
       }
     } else {
-      if (strcmp(clarg->long_name, str) == 0) {
+      if (ft_strcmp(clarg->long_name, str) == 0) {
         clarg->provided = true;
         if (clarg->value_required) {
           if (cla->i + 1 >= cla->argc) {
