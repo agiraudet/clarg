@@ -1,8 +1,10 @@
-#ifndef CLA_H
-#define CLA_H
+#ifndef CLARG_H
+#define CLARG_H
 
 #include <stdbool.h>
 #include <stddef.h>
+
+#define CLARG_MAX_USAGE_LEN 256
 
 typedef struct {
   const char **data;
@@ -18,6 +20,7 @@ typedef struct {
   bool value_required;
   const char *value;
   t_cla_vector allowed_values;
+  char usage[CLARG_MAX_USAGE_LEN];
 } t_clarg;
 
 typedef struct {
@@ -28,29 +31,29 @@ typedef struct {
   size_t args_count;
   size_t args_capacity;
   t_cla_vector inputs;
+  t_cla_vector required_inputs;
+  const char *description;
 } t_cla;
 
 // BUILD
-t_cla *cla_init(t_cla *cla, int argc, char **argv);
-void cla_destroy(t_cla *cla);
-t_clarg *clarg_init(t_clarg *clarg, char short_name, const char *long_name,
-                    const char *description);
-t_clarg *cla_new(t_cla *cla);
-t_clarg *cla_arg(t_cla *cla, char short_name, const char *long_name,
+int cla_init(int argc, char **argv);
+int cla_add_required_input(const char *input_name);
+void cla_add_description(const char *description);
+t_clarg *cla_arg(char short_name, const char *long_name,
                  const char *description);
 t_clarg *clarg_add_allowed_value(t_clarg *clarg, const char *value);
 
 // MANAGE
-int cla_parse(t_cla *cla);
+int cla_parse();
 
 // INSPECT
-void cla_usage(t_cla *cla);
-bool cla_provided(t_cla *cla, char short_name);
-t_clarg *cla_get(t_cla *cla, char short_name);
-const char *cla_value(t_cla *cla, char short_name);
+void cla_usage();
+bool cla_provided(char short_name);
+t_clarg *cla_get(char short_name);
+const char *cla_value(char short_name);
 
 // DEBUG
 void clarg_debug_print(t_clarg *clarg);
-void cla_debug_print(t_cla *cla);
+void cla_debug_print();
 
-#endif // !CLA_H
+#endif // !CLARG_H

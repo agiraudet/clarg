@@ -8,9 +8,13 @@ INCLUDEDIR	:=	$(PREFIX)/include
 
 SRCS				:=	clarg.c
 
+EXMPL				:=	example
+
+EXMPL_SRCS	:=	example.c
+
 OBJS				:=	$(SRCS:%.c=%.o)
 
-CFLAGS			:=	-Wall -Wextra -Werror -Wno-unused-function -g
+CFLAGS			:=	-Wall -Wextra -Werror -Wno-unused-function -O2
 
 CC					:=	gcc
 
@@ -28,8 +32,8 @@ install: $(NAME)
 	install -d $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 clarg.h $(DESTDIR)$(INCLUDEDIR)
 
-example: $(NAME)
-	$(CC) $(CFLAGS) example.c -o example -L. -lclarg
+$(EXMPL): $(NAME)
+	$(CC) $(CFLAGS) $(EXMPL_SRCS) -o $(EXMPL) -L. -lclarg 
 
 clean:
 	rm -f $(OBJS)

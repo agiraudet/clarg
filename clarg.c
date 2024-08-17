@@ -5,6 +5,11 @@
 
 #include "clarg.h"
 
+static t_cla *get_cla() {
+  static t_cla cla;
+  return &cla;
+}
+
 static int cla_vector_init(t_cla_vector *vec, size_t capacity) {
   vec->size = 0;
   vec->capacity = capacity;
@@ -65,47 +70,59 @@ static const char *cla_vector_popback(t_cla_vector *vec) {
   return vec->data[--vec->size];
 }
 
-void cla_destroy(t_cla *cla) {
-  if (!cla)
-    return;
-  if (cla->args)
-    free(cla->args);
-  if (cla->inputs.data)
-    free(cla->inputs.data);
-}
-
 static void clarg_destroy(t_clarg *clarg) {
   if (!clarg)
     return;
-  if (clarg->allowed_values.capacity)
+  if (clarg->allowed_values.data)
     free(clarg->allowed_values.data);
 }
 
-t_cla *cla_init(t_cla *cla, int argc, char **argv) {
-  if (!cla) {
-    return NULL;
+static void cla_destroy(void) {
+  t_cla *cla = get_cla();
+  if (cla->args) {
+    for (size_t i = 0; i < cla->args_count; i++)
+      clarg_destroy(cla->args + i);
+    free(cla->args);
   }
+  if (cla->inputs.data)
+    free(cla->inputs.data);
+  if (cla->required_inputs.data)
+    free(cla->required_inputs.data);
+}
+
+int cla_init(int argc, char **argv) {
+  static bool initialized = false;
+  if (initialized)
+    return 0;
+  t_cla *cla = get_cla();
   cla->argc = argc;
   cla->argv = argv;
   cla->args_count = 0;
   cla->args_capacity = 1;
+  cla->description = NULL;
   cla->args = (t_clarg *)calloc(cla->args_capacity, sizeof(t_clarg));
   if (!cla->args) {
-    return NULL;
+    return -1;
   }
-  cla_vector_init(&cla->inputs, 1);
-  cla_arg(cla, 'h', "help", "Print this help message");
-  return cla;
+  if (cla_vector_init(&cla->inputs, 1) < 0)
+    return -1;
+  if (cla_vector_init(&cla->required_inputs, 0) < 0)
+    return -1;
+  cla_arg('h', "help", "Print this help message");
+  atexit(cla_destroy);
+  initialized = true;
+  return 0;
 }
 
-t_clarg *clarg_init(t_clarg *clarg, char short_name, const char *long_name,
-                    const char *description) {
+static t_clarg *clarg_init(t_clarg *clarg, char short_name,
+                           const char *long_name, const char *description) {
   clarg->short_name = short_name;
   clarg->long_name = long_name;
   clarg->description = description;
   clarg->provided = false;
   clarg->value_required = false;
   clarg->value = NULL;
+  memset(&clarg->usage, 0, sizeof(clarg->usage));
   cla_vector_init(&clarg->allowed_values, 0);
   return clarg;
 }
@@ -113,13 +130,13 @@ t_clarg *clarg_init(t_clarg *clarg, char short_name, const char *long_name,
 t_clarg *clarg_add_allowed_value(t_clarg *clarg, const char *value) {
   if (!clarg)
     return NULL;
+  clarg->value_required = true;
   cla_vector_pushback(&clarg->allowed_values, value);
   return clarg;
 }
 
-t_clarg *cla_new(t_cla *cla) {
-  if (!cla)
-    return NULL;
+static t_clarg *cla_new(void) {
+  t_cla *cla = get_cla();
   if (cla->args_count >= cla->args_capacity) {
     cla->args_capacity *= 2;
     cla->args =
@@ -130,9 +147,12 @@ t_clarg *cla_new(t_cla *cla) {
   return cla->args + cla->args_count++;
 }
 
-t_clarg *cla_arg(t_cla *cla, char short_name, const char *long_name,
+t_clarg *cla_arg(char short_name, const char *long_name,
                  const char *description) {
-  return clarg_init(cla_new(cla), short_name, long_name, description);
+  t_clarg *clarg = cla_get(short_name);
+  if (clarg)
+    return NULL;
+  return clarg_init(cla_new(), short_name, long_name, description);
 }
 
 static int cla_match_shortname(t_cla *cla, const char *str) {
@@ -200,9 +220,28 @@ static int cla_match_longname(t_cla *cla, const char *str) {
   return -1;
 }
 
-int cla_parse(t_cla *cla) {
-  if (!cla)
+static int cla_check_required_inputs() {
+  t_cla *cla = get_cla();
+  if (cla->required_inputs.size > cla->inputs.size) {
+    fprintf(stderr, "Missing required input: %s\n",
+            cla_vector_at(&cla->required_inputs, cla->inputs.size));
     return -1;
+  }
+  return 0;
+}
+
+int cla_add_required_input(const char *input) {
+  t_cla *cla = get_cla();
+  return cla_vector_pushback(&cla->required_inputs, input);
+}
+
+void cla_add_description(const char *description) {
+  t_cla *cla = get_cla();
+  cla->description = description;
+}
+
+int cla_parse() {
+  t_cla *cla = get_cla();
   cla->i = 1;
   while (cla->i < cla->argc) {
     const char *arg = cla->argv[cla->i];
@@ -217,12 +256,13 @@ int cla_parse(t_cla *cla) {
     }
     cla->i++;
   }
-  return 0;
+  if (cla_provided('h'))
+    return 1;
+  return cla_check_required_inputs();
 }
 
-t_clarg *cla_get(t_cla *cla, char short_name) {
-  if (!cla)
-    return NULL;
+t_clarg *cla_get(char short_name) {
+  t_cla *cla = get_cla();
   for (size_t i = 0; i < cla->args_count; i++) {
     if (cla->args[i].short_name == short_name)
       return cla->args + i;
@@ -230,39 +270,37 @@ t_clarg *cla_get(t_cla *cla, char short_name) {
   return NULL;
 }
 
-const char *cla_value(t_cla *cla, char short_name) {
-  if (!cla)
-    return NULL;
-  t_clarg *clarg = cla_get(cla, short_name);
+const char *cla_value(char short_name) {
+  t_clarg *clarg = cla_get(short_name);
   if (!clarg)
     return NULL;
   return clarg->value;
 }
 
-bool cla_provided(t_cla *cla, char short_name) {
-  if (!cla)
-    return NULL;
-  t_clarg *clarg = cla_get(cla, short_name);
+bool cla_provided(char short_name) {
+  t_clarg *clarg = cla_get(short_name);
   if (!clarg)
     return false;
   return clarg->provided;
 }
 
-static int cla_longest_cmd(t_cla *cla) {
+static int clar_make_usage_srt(t_cla *cla) {
   int max_len = 0;
-  char buffer[256];
   for (size_t i = 0; i < cla->args_count; i++) {
-    int len = 2;
-    if (cla->args[i].short_name) {
-      len += snprintf(buffer, sizeof(buffer), "-%c", cla->args[i].short_name);
-      if (cla->args[i].value_required)
-        len += snprintf(buffer, sizeof(buffer), " <option>");
-      len += snprintf(buffer, sizeof(buffer), ", ");
+    t_clarg *clarg = cla->args + i;
+    int len = snprintf(clarg->usage, sizeof(clarg->usage), "  ");
+    if (clarg->short_name) {
+      len += snprintf(clarg->usage + len, sizeof(clarg->usage), "-%c",
+                      clarg->short_name);
+      if (clarg->value_required)
+        len += snprintf(clarg->usage + len, sizeof(clarg->usage), " <option>");
+      len += snprintf(clarg->usage + len, sizeof(clarg->usage), ", ");
     }
-    if (cla->args[i].long_name) {
-      len += snprintf(buffer, sizeof(buffer), "--%s", cla->args[i].long_name);
-      if (cla->args[i].value_required)
-        len += snprintf(buffer, sizeof(buffer), "=<option>");
+    if (clarg->long_name) {
+      len += snprintf(clarg->usage + len, sizeof(clarg->usage), "--%s",
+                      clarg->long_name);
+      if (clarg->value_required)
+        len += snprintf(clarg->usage + len, sizeof(clarg->usage), "=<option>");
     }
     if (len > max_len)
       max_len = len;
@@ -270,24 +308,23 @@ static int cla_longest_cmd(t_cla *cla) {
   return max_len;
 }
 
-void cla_usage(t_cla *cla) {
-  printf("Usage: %s [OPTIONS]\n", cla->argv[0]);
-  printf("Options:\n");
-  int max_len = cla_longest_cmd(cla);
+void cla_usage() {
+  t_cla *cla = get_cla();
+  if (cla->description)
+    printf("%s\n", cla->description);
+  printf("Usage: %s", cla->argv[0]);
+  if (cla->args_count > 0) {
+    printf(" [OPTIONS] ");
+    if (cla->required_inputs.size > 0) {
+      for (size_t i = 0; i < cla->required_inputs.size; i++)
+        printf("%s ", cla_vector_at(&cla->required_inputs, i));
+    }
+    printf("\nOptions:");
+  }
+  printf("\n");
+  int max_len = clar_make_usage_srt(cla);
   for (size_t i = 0; i < cla->args_count; i++) {
-    int written = 0;
-    written += printf("  ");
-    if (cla->args[i].short_name) {
-      written += printf("-%c", cla->args[i].short_name);
-      if (cla->args[i].value_required)
-        written += printf(" <option>");
-      written += printf(", ");
-    }
-    if (cla->args[i].long_name) {
-      written += printf("--%s", cla->args[i].long_name);
-      if (cla->args[i].value_required)
-        written += printf("=<option>");
-    }
+    int written = printf("%s", cla->args[i].usage);
     printf("%*s %s\n", max_len - written, "", cla->args[i].description);
   }
 }
@@ -310,10 +347,17 @@ void clarg_debug_print(t_clarg *clarg) {
     printf("Any\n");
 }
 
-void cla_debug_print(t_cla *cla) {
+void cla_debug_print() {
+  t_cla *cla = get_cla();
   printf("argc: %d\n", cla->argc);
-  for (size_t i = 0; i < cla->inputs.size; i++) {
-    printf("input: %s\n", cla_vector_at(&cla->inputs, i));
+  if (cla->inputs.size > 0) {
+    printf("inputs:");
+    for (size_t i = 0; i < cla->inputs.size; i++) {
+      if (i > 0)
+        printf(",");
+      printf(" %s", cla_vector_at(&cla->inputs, i));
+    }
+    printf("\n");
   }
   for (size_t i = 0; i < cla->args_count; i++) {
     clarg_debug_print(cla->args + i);
