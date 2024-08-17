@@ -258,6 +258,15 @@ static int cla_check_required_inputs() {
             cla_vector_at(&cla->required_inputs, cla->inputs.size));
     return -1;
   }
+  for (size_t i = 0; i < cla->args_count; i++) {
+    t_clarg *clarg = cla->args + i;
+    if (clarg->allowed_values.size > 0 &&
+        !cla_vector_in(&clarg->allowed_values, clarg->value)) {
+      fprintf(stderr, "Invalid value for --%s: %s\n", clarg->long_name,
+              clarg->value);
+      return -1;
+    }
+  }
   return 0;
 }
 
